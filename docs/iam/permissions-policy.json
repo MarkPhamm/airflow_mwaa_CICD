@@ -11,8 +11,8 @@
         "s3:GetBucketVersioning"
       ],
       "Resource": [
-        "arn:aws:s3:::my-mwaa-bucket",
-        "arn:aws:s3:::my-mwaa-bucket/*"
+        "arn:aws:s3:::airflow-my-mwaa-bucket",
+        "arn:aws:s3:::airflow-my-mwaa-bucket/*"
       ]
     },
     {

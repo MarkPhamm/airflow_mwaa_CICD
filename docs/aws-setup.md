@@ -1,5 +1,33 @@
 # AWS Setup for MWAA CI/CD
 
+## What You Need from Your Manager
+
+Before you can start, get the following from your manager:
+
+1. **AWS Access Key + Secret Key** — so you can run `aws configure` and use the CLI
+2. **AWS Account ID** (12-digit number) — to fill in `<ACCOUNT_ID>` in the trust policy
+3. **IAM permissions** — your user needs to be able to create OIDC providers, IAM roles, S3 buckets, and MWAA environments
+
+## Overview
+
+Once you have the above, follow these steps in order:
+
+```text
+aws configure (one-time local setup)
+    ↓
+Create S3 bucket (Step 1)
+    ↓
+Create OIDC provider (Step 2) — tells AWS "trust GitHub"
+    ↓
+Create IAM role with trust + permissions policies (Steps 3-4)
+    ↓
+Create MWAA environment (Step 5)
+    ↓
+Update deploy.yml with real values (Step 6)
+    ↓
+Merge a PR → CD pipeline works automatically
+```
+
 ## Prerequisites
 
 - An AWS account with IAM admin access
@@ -9,11 +37,13 @@
 
 ## Step 1: Create S3 Bucket
 
-Create an S3 bucket with **versioning enabled** (MWAA needs version IDs for supporting files):
+Create an S3 bucket with **versioning enabled** (MWAA needs version IDs for supporting files).
+
+> **Important:** The bucket name must start with `airflow-` (MWAA requirement).
 
 ```bash
-aws s3api create-bucket --bucket my-mwaa-bucket --region us-east-1
-aws s3api put-bucket-versioning --bucket my-mwaa-bucket --versioning-configuration Status=Enabled
+aws s3api create-bucket --bucket airflow-my-mwaa-bucket --region us-east-1
+aws s3api put-bucket-versioning --bucket airflow-my-mwaa-bucket --versioning-configuration Status=Enabled
 ```
 
 ## Step 2: Create GitHub OIDC Identity Provider
@@ -49,7 +79,7 @@ aws iam put-role-policy \
   --policy-document file://docs/iam/permissions-policy.json
 ```
 
-> Edit `docs/iam/permissions-policy.json` first — replace `my-mwaa-bucket` with your bucket name.
+> Edit `docs/iam/permissions-policy.json` first — replace `airflow-my-mwaa-bucket` with your bucket name.
 
 ## Step 5: Create MWAA Environment
 
@@ -58,7 +88,7 @@ Create the MWAA environment pointing at your S3 bucket (or do this via the AWS c
 ```bash
 aws mwaa create-environment \
   --name my-mwaa-environment \
-  --source-bucket-arn arn:aws:s3:::my-mwaa-bucket \
+  --source-bucket-arn arn:aws:s3:::airflow-my-mwaa-bucket \
   --dag-s3-path dags \
   --execution-role-arn arn:aws:iam::<ACCOUNT_ID>:role/mwaa-execution-role \
   --network-configuration SubnetIds=subnet-xxx,SecurityGroupIds=sg-xxx
@@ -69,9 +99,9 @@ aws mwaa create-environment \
 Replace the placeholders in `.github/workflows/deploy.yml`:
 
 - `my-mwaa-environment` → your MWAA environment name
-- `my-mwaa-bucket` → your S3 bucket name
+- `airflow-my-mwaa-bucket` → your S3 bucket name (must start with `airflow-`)
 - `123456789012` → your AWS account ID
-- `my-mwaa-deploy-role` → the IAM role name from Step 3
+- `mwaa-deploy-role` → the IAM role name from Step 3
 
 ## Step 7: Test
 

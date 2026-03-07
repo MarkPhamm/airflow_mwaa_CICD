@@ -7,7 +7,7 @@ on:
 
 env:
   MWAA_NAME: "my-mwaa-environment"
-  BUCKET_NAME: "my-mwaa-bucket"
+  BUCKET_NAME: "airflow-my-mwaa-bucket"
   AWS_REGION: "us-east-1"
 
 permissions:
@@ -27,7 +27,7 @@ jobs:
       - name: Step 2:Configure AWS credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: arn:aws:iam::123456789012:role/my-mwaa-deploy-role # Replace with your IAM role ARN
+          role-to-assume: arn:aws:iam::123456789012:role/mwaa-deploy-role # Replace with your IAM role ARN
           aws-region: ${{ env.AWS_REGION }}
 
       # Detect if infrastructure files changed
