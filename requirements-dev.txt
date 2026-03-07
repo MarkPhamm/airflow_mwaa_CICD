@@ -1,4 +1,4 @@
 -r requirements.txt
 apache-airflow==2.11.1
-ruff
-pytest
+ruff==0.15.5
+pytest==9.0.2
