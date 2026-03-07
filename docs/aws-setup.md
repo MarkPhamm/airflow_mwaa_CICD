@@ -1,6 +1,13 @@
 # AWS Setup for MWAA CI/CD
 
-## 1. S3 Bucket (where your files go)
+## Prerequisites
+
+- An AWS account with IAM admin access
+- AWS CLI installed (`brew install awscli`)
+- AWS CLI configured (`aws configure`)
+- Your AWS Account ID (12-digit number)
+
+## Step 1: Create S3 Bucket
 
 Create an S3 bucket with **versioning enabled** (MWAA needs version IDs for supporting files):
 
@@ -9,78 +16,70 @@ aws s3api create-bucket --bucket my-mwaa-bucket --region us-east-1
 aws s3api put-bucket-versioning --bucket my-mwaa-bucket --versioning-configuration Status=Enabled
 ```
 
-## 2. GitHub OIDC → AWS IAM Role (how GitHub authenticates)
+## Step 2: Create GitHub OIDC Identity Provider
 
-This lets GitHub Actions get temporary AWS credentials without storing secrets.
-
-### Step A: Create the OIDC identity provider in AWS
+Tell AWS to trust GitHub as an identity provider (one-time setup):
 
 ```bash
 aws iam create-open-id-connect-provider \
   --url https://token.actions.githubusercontent.com \
-  --client-id-list sts.amazonaws.com \
-  --thumbprint-list 6938fd4d98bab03faadb97b34396831e3780aea1
+  --client-id-list sts.amazonaws.com
 ```
 
-### Step B: Create an IAM role with a trust policy that only allows your repo
+## Step 3: Create IAM Role with Trust Policy
 
-```json
-{
-  "Version": "2012-10-17",
-  "Statement": [{
-    "Effect": "Allow",
-    "Principal": {
-      "Federated": "arn:aws:iam::<ACCOUNT_ID>:oidc-provider/token.actions.githubusercontent.com"
-    },
-    "Action": "sts:AssumeRoleWithWebIdentity",
-    "Condition": {
-      "StringEquals": {
-        "token.actions.githubusercontent.com:aud": "sts.amazonaws.com"
-      },
-      "StringLike": {
-        "token.actions.githubusercontent.com:sub": "repo:MarkPhamm/airflow_mwaa:*"
-      }
-    }
-  }]
-}
+Create a role that only your GitHub repo can assume. The trust policy is in `docs/iam/trust-policy.json`:
+
+```bash
+aws iam create-role \
+  --role-name mwaa-deploy-role \
+  --assume-role-policy-document file://docs/iam/trust-policy.json
 ```
 
-### Step C: Attach a policy to that role allowing S3 and MWAA access
+> Edit `docs/iam/trust-policy.json` first — replace `<ACCOUNT_ID>` with your AWS account ID.
 
-```json
-{
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Effect": "Allow",
-      "Action": ["s3:PutObject", "s3:GetObject", "s3:DeleteObject", "s3:ListBucket"],
-      "Resource": [
-        "arn:aws:s3:::my-mwaa-bucket",
-        "arn:aws:s3:::my-mwaa-bucket/*"
-      ]
-    },
-    {
-      "Effect": "Allow",
-      "Action": ["s3:GetBucketVersioning", "s3api:HeadObject"],
-      "Resource": "arn:aws:s3:::my-mwaa-bucket"
-    },
-    {
-      "Effect": "Allow",
-      "Action": ["airflow:UpdateEnvironment", "airflow:GetEnvironment"],
-      "Resource": "*"
-    }
-  ]
-}
+## Step 4: Attach Permissions to the Role
+
+Give the role access to S3 and MWAA. The policy is in `docs/iam/permissions-policy.json`:
+
+```bash
+aws iam put-role-policy \
+  --role-name mwaa-deploy-role \
+  --policy-name mwaa-deploy-permissions \
+  --policy-document file://docs/iam/permissions-policy.json
 ```
 
-## 3. Update deploy.yml with real values
+> Edit `docs/iam/permissions-policy.json` first — replace `my-mwaa-bucket` with your bucket name.
 
-Replace the placeholders with your actual values:
+## Step 5: Create MWAA Environment
+
+Create the MWAA environment pointing at your S3 bucket (or do this via the AWS console):
+
+```bash
+aws mwaa create-environment \
+  --name my-mwaa-environment \
+  --source-bucket-arn arn:aws:s3:::my-mwaa-bucket \
+  --dag-s3-path dags \
+  --execution-role-arn arn:aws:iam::<ACCOUNT_ID>:role/mwaa-execution-role \
+  --network-configuration SubnetIds=subnet-xxx,SecurityGroupIds=sg-xxx
+```
+
+## Step 6: Update deploy.yml with Real Values
+
+Replace the placeholders in `.github/workflows/deploy.yml`:
 
 - `my-mwaa-environment` → your MWAA environment name
 - `my-mwaa-bucket` → your S3 bucket name
 - `123456789012` → your AWS account ID
-- `my-mwaa-deploy-role` → the IAM role name you created
+- `my-mwaa-deploy-role` → the IAM role name from Step 3
+
+## Step 7: Test
+
+Merge a PR to `main` and check the GitHub Actions tab. The deploy job should:
+
+1. Authenticate to AWS via OIDC
+2. Sync DAGs to S3
+3. MWAA picks them up within 30 seconds
 
 ## Flow once configured
 
