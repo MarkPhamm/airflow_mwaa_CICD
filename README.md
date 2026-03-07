@@ -4,7 +4,7 @@ Learning CI/CD with Airflow on Amazon MWAA.
 
 ## Project Structure
 
-```
+```text
 dags/               Airflow DAG files
 dags/dbt/           dbt project (Snowflake)
 plugins/            Airflow plugins (zipped for MWAA)
