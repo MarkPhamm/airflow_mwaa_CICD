@@ -19,19 +19,19 @@ jobs:
     name: Deploy to MWAA
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
+      - name: Step 1:Checkout code
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Configure AWS credentials
+      - name: Step 2:Configure AWS credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: arn:aws:iam::123456789012:role/my-mwaa-deploy-role
+          role-to-assume: arn:aws:iam::123456789012:role/my-mwaa-deploy-role # Replace with your IAM role ARN
           aws-region: ${{ env.AWS_REGION }}
 
       # Detect if infrastructure files changed
-      - name: Check for infra changes
+      - name: Step 3:Check for infra changes
         uses: tj-actions/changed-files@v41
         id: infra_changes
         with:
@@ -42,19 +42,19 @@ jobs:
 
       # --- Infra changed: rebuild & update MWAA environment ---
 
-      - name: Upload supporting files to S3
+      - name: Step 4:Upload supporting files to S3
         if: steps.infra_changes.outputs.any_changed == 'true'
         run: |
           aws s3 cp requirements.txt s3://${{ env.BUCKET_NAME }}/requirements.txt
 
-      - name: Get S3 version IDs
+      - name: Step 5:Get S3 version IDs
         if: steps.infra_changes.outputs.any_changed == 'true'
         id: versions
         run: |
           REQ_VERSION=$(aws s3api head-object --bucket ${{ env.BUCKET_NAME }} --key requirements.txt --query 'VersionId' --output text)
           echo "requirements_version=$REQ_VERSION" >> $GITHUB_OUTPUT
 
-      - name: Update MWAA environment
+      - name: Step 6:Update MWAA environment
         if: steps.infra_changes.outputs.any_changed == 'true'
         run: |
           aws mwaa update-environment \
@@ -62,7 +62,7 @@ jobs:
             --requirements-s3-path requirements.txt \
             --requirements-s3-object-version ${{ steps.versions.outputs.requirements_version }}
 
-      - name: Wait for MWAA to be available
+      - name: Step 7:Wait for MWAA to be available
         if: steps.infra_changes.outputs.any_changed == 'true'
         run: |
           MAX_ATTEMPTS=50
@@ -91,5 +91,5 @@ jobs:
 
       # --- Always: sync DAGs to S3 ---
 
-      - name: Sync DAGs to S3
+      - name: Step 8:Sync DAGs to S3
         run: aws s3 sync dags s3://${{ env.BUCKET_NAME }}/dags --delete
