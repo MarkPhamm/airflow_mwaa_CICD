@@ -16,6 +16,7 @@ airflow-init:
 test-dag:
 	AIRFLOW_HOME=$(PWD)/airflow_home \
 	AIRFLOW__CORE__DAGS_FOLDER=$(PWD)/dags \
+	PYTHONPATH=$(PWD)/plugins:$(PYTHONPATH) \
 	.venv/bin/airflow dags test $(DAG) 2024-01-01
 
 # Check code formatting and linting with ruff
