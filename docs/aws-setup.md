@@ -84,6 +84,6 @@ Replace the placeholders with your actual values:
 
 ## Flow once configured
 
-```
+```text
 Merge PR → GitHub gets JWT → trades it for AWS creds via OIDC → uploads to S3 → updates MWAA
 ```

@@ -39,4 +39,3 @@ deploy: package-plugins
 	@echo "Ready to upload:"
 	@echo "  - plugins.zip"
 	@echo "  - requirements.txt"
-	@echo "  - startup.sh"

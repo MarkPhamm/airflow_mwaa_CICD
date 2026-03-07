@@ -8,7 +8,6 @@ Learning CI/CD with Airflow on Amazon MWAA.
 dags/               Airflow DAG files
 dags/dbt/           dbt project (Snowflake)
 plugins/            Airflow plugins (zipped for MWAA)
-startup.sh          Runs on MWAA worker startup (installs dbt)
 requirements.txt    Python packages for MWAA
 .github/workflows/  CI/CD pipelines
 ```

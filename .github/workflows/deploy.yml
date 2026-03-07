@@ -38,7 +38,6 @@ jobs:
           files: |
             requirements.txt
             plugins/**
-            startup.sh
             Makefile
 
       # --- Infra changed: rebuild & update MWAA environment ---
@@ -47,7 +46,6 @@ jobs:
         if: steps.infra_changes.outputs.any_changed == 'true'
         run: |
           aws s3 cp requirements.txt s3://${{ env.BUCKET_NAME }}/requirements.txt
-          aws s3 cp startup.sh s3://${{ env.BUCKET_NAME }}/startup.sh
 
       - name: Get S3 version IDs
         if: steps.infra_changes.outputs.any_changed == 'true'
@@ -56,18 +54,13 @@ jobs:
           REQ_VERSION=$(aws s3api head-object --bucket ${{ env.BUCKET_NAME }} --key requirements.txt --query 'VersionId' --output text)
           echo "requirements_version=$REQ_VERSION" >> $GITHUB_OUTPUT
 
-          STARTUP_VERSION=$(aws s3api head-object --bucket ${{ env.BUCKET_NAME }} --key startup.sh --query 'VersionId' --output text)
-          echo "startup_version=$STARTUP_VERSION" >> $GITHUB_OUTPUT
-
       - name: Update MWAA environment
         if: steps.infra_changes.outputs.any_changed == 'true'
         run: |
           aws mwaa update-environment \
             --name ${{ env.MWAA_NAME }} \
             --requirements-s3-path requirements.txt \
-            --requirements-s3-object-version ${{ steps.versions.outputs.requirements_version }} \
-            --startup-script-s3-path startup.sh \
-            --startup-script-s3-object-version ${{ steps.versions.outputs.startup_version }}
+            --requirements-s3-object-version ${{ steps.versions.outputs.requirements_version }}
 
       - name: Wait for MWAA to be available
         if: steps.infra_changes.outputs.any_changed == 'true'
