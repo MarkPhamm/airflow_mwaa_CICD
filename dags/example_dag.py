@@ -19,4 +19,9 @@ with DAG(
         name="Mark",
     )
 
-    hello >> greet
+    goodbye = BashOperator(
+        task_id="say_goodbye",
+        bash_command="echo 'Goodbye from MWAA!'",
+    )
+
+    hello >> greet >> goodbye
