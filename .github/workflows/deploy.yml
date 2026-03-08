@@ -47,6 +47,9 @@ jobs:
         run: |
           aws s3 cp requirements.txt s3://${{ env.BUCKET_NAME }}/requirements.txt
 
+          cd plugins && zip -r ../plugins.zip . && cd ..
+          aws s3 cp plugins.zip s3://${{ env.BUCKET_NAME }}/plugins.zip
+
       - name: Step 5:Get S3 version IDs
         if: steps.infra_changes.outputs.any_changed == 'true'
         id: versions
@@ -54,13 +57,18 @@ jobs:
           REQ_VERSION=$(aws s3api head-object --bucket ${{ env.BUCKET_NAME }} --key requirements.txt --query 'VersionId' --output text)
           echo "requirements_version=$REQ_VERSION" >> $GITHUB_OUTPUT
 
+          PLUGINS_VERSION=$(aws s3api head-object --bucket ${{ env.BUCKET_NAME }} --key plugins.zip --query 'VersionId' --output text)
+          echo "plugins_version=$PLUGINS_VERSION" >> $GITHUB_OUTPUT
+
       - name: Step 6:Update MWAA environment
         if: steps.infra_changes.outputs.any_changed == 'true'
         run: |
           aws mwaa update-environment \
             --name ${{ env.MWAA_NAME }} \
             --requirements-s3-path requirements.txt \
-            --requirements-s3-object-version ${{ steps.versions.outputs.requirements_version }}
+            --requirements-s3-object-version ${{ steps.versions.outputs.requirements_version }} \
+            --plugins-s3-path plugins.zip \
+            --plugins-s3-object-version ${{ steps.versions.outputs.plugins_version }}
 
       - name: Step 7:Wait for MWAA to be available
         if: steps.infra_changes.outputs.any_changed == 'true'
