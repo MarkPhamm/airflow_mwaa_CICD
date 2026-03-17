@@ -1,7 +1,13 @@
-# airflow_mwaa
-
+# Airflow MWAA CI/CD
 Learning CI/CD with Airflow on Amazon MWAA.
+<img width="1708" height="960" alt="image" src="https://github.com/user-attachments/assets/d85c9ff8-dac2-465a-9897-2a51d69b708c" />
 
+## TLDR
+MWAA CI/CD is essentially a code-sync pipeline for Airflow, not a full deploy cycle every time.
+
+Each CD run syncs the DAGs to the MWAA S3 bucket so the scheduler picks up any workflow changes. Infrastructure artifacts such as plugins.zip and requirements.txt are only uploaded when there are dependency or environment changes, since those trigger a heavier MWAA environment update.
+
+The CI layer stays intentionally slim. It mainly runs linting and basic validation on DAGs to catch syntax or style issues before anything reaches the environment. The goal is fast feedback on code quality while keeping the deployment side focused on syncing workflow definitions rather than constantly rebuilding the environment.
 ## Project Structure
 
 ```text
